@@ -1,0 +1,929 @@
+// ============================================================================
+// GCOS — Prisma Schema
+// M03: Complete 34-table definition per PRD v2 Section 07 + TAD v1 Section 4.
+//
+// Conventions (TAD 4.1):
+//   - snake_case for all table and column names (@@map / @map everywhere)
+//   - UUID for user-created entities, SERIAL (Int autoincrement) for seeded
+//     reference data
+//   - created_at on every table; updated_at on mutable tables only
+//   - CHECK constraints enforced via Prisma's `@db` raw SQL is NOT supported
+//     directly in schema.prisma for arbitrary CHECK() clauses — Prisma maps
+//     enums to Postgres ENUM types instead, which is the idiomatic
+//     equivalent of "CHECK constraint for all enum-like columns" for the
+//     fields TAD explicitly calls out as enum-like (stage, status, tier,
+//     content_type, tool, correct_option, rejection_reason, etc.).
+//     This achieves the same DB-level guarantee TAD 4.1 asks for ("catches
+//     bugs that bypass the API") via Postgres native ENUM types rather than
+//     raw CHECK() — Prisma's closest first-class mechanism for it.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS  (Postgres-native — the DB-level guarantee behind every CHECK note)
+// ============================================================================
+
+enum PipelineStage {
+  saved
+  applied
+  screening
+  tech_interview
+  take_home
+  final_interview
+  offer
+  rejected
+}
+
+enum RejectionReasonCode {
+  NO_VISA_SPONSORSHIP
+  EU_ONLY
+  FRONTEND_ONLY
+  NO_PORTFOLIO
+  SALARY_MISMATCH
+  LANGUAGE_REQUIRED
+  OVERQUALIFIED
+  UNDERQUALIFIED
+  BETTER_CANDIDATE
+  ROLE_FILLED
+  GHOSTED
+  OTHER
+}
+
+enum ApplicationSource {
+  linkedin
+  company_site
+  xing
+  referral
+  recruiter
+  other
+}
+
+enum CompanySizeBucket {
+  startup
+  mid
+  enterprise
+  consulting
+}
+
+enum LessonContentType {
+  lesson
+  exercise
+  quiz
+  interview_qa
+  revision_sheet
+}
+
+enum ContentTier {
+  MVP
+  V2
+  V3
+}
+
+enum LessonStatus {
+  not_started
+  in_progress
+  completed
+}
+
+enum WeekTaskStatus {
+  not_started
+  in_progress
+  completed
+  skipped
+}
+
+enum TopicImportance {
+  critical
+  high
+  medium
+  low
+}
+
+enum QuizOption {
+  a
+  b
+  c
+  d
+}
+
+enum GermanLevel {
+  A1
+  A2
+}
+
+enum GermanSessionType {
+  duolingo
+  dw_course
+  italki
+  speaking_practice
+  reading
+  writing
+  watching
+}
+
+enum AiTool {
+  claude_code
+  cursor
+  mcp
+  openai_api
+  vercel_ai_sdk
+  other
+}
+
+enum ConnectionType {
+  engineer
+  recruiter
+  hiring_manager
+  founder
+  other
+}
+
+enum ConnectionStatus {
+  sent
+  connected
+  chatting
+  coffee_chat_done
+  referral
+}
+
+enum ProjectStatus {
+  not_started
+  in_progress
+  feature_complete
+  deployed
+  case_study_done
+}
+
+enum MilestoneCategory {
+  backend
+  frontend
+  testing
+  deployment
+  documentation
+  performance
+}
+
+enum MilestoneStatus {
+  not_started
+  in_progress
+  completed
+  blocked
+}
+
+enum InterviewFormat {
+  phone
+  video
+  technical
+  system_design
+  take_home
+  final
+  hr
+}
+
+enum InterviewOutcome {
+  passed
+  failed
+  waiting
+  cancelled
+}
+
+enum QuestionCategory {
+  javascript
+  typescript
+  react
+  nodejs
+  nestjs
+  postgresql
+  docker
+  system_design
+  ai_tooling
+  behavioural
+  german
+}
+
+enum QuestionDifficulty {
+  easy
+  medium
+  hard
+}
+
+enum QuestionStatus {
+  not_tried
+  practiced
+  confident
+}
+
+enum VisaDocumentCategory {
+  education
+  identity
+  employment
+  financial
+  other
+}
+
+enum VisaDocumentStatus {
+  not_started
+  gathering
+  in_progress
+  ready
+  submitted
+}
+
+// ============================================================================
+// GROUP 1 — IDENTITY
+// ============================================================================
+
+/// Single-user system (TAD 4.2, Group 1) — exactly one row in MVP.
+model User {
+  id                       String   @id @default(uuid()) @db.Uuid
+  email                    String   @unique
+  passwordHash             String   @map("password_hash")
+  refreshTokenHash         String?  @map("refresh_token_hash")
+  name                     String   @default("Jitendra Mishra")
+  avatarUrl                String?  @map("avatar_url")
+  targetCountry            String   @default("Germany") @map("target_country")
+  targetRole               String   @default("Senior Full-Stack Engineer") @map("target_role")
+  planStartDate            DateTime @map("plan_start_date") @db.Date
+  targetEndDate            DateTime @map("target_end_date") @db.Date
+  weeklyStudyTargetHours   Decimal  @default(17.5) @map("weekly_study_target_hours") @db.Decimal(4, 1)
+  weeklyApplicationTarget  Int      @default(20) @map("weekly_application_target")
+  weeklyGermanMinutesTarget Int     @default(210) @map("weekly_german_minutes_target")
+  /// PRD v2 §7.2 addition — target AI tool sessions per month.
+  weeklyAiSessionsTarget   Int      @default(4) @map("weekly_ai_sessions_target")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  studySessions          StudySession[]
+  lessonProgress         UserLessonProgress[]
+  topicCompletions       TopicCompletion[]
+  weekTaskCompletions    WeekTaskCompletion[]
+  quizAttempts           QuizAttempt[]
+  germanSessions         GermanSession[]
+  vocabularyEntries      VocabularyEntry[]
+  aiToolSessions         AiToolSession[]
+  jobApplications        JobApplication[]
+  interviewQuestions     InterviewQuestion[]
+  mockInterviewLogs      MockInterviewLog[]
+  networkConnections     NetworkConnection[]
+  linkedinPosts          LinkedinPost[]
+  readinessScores        ReadinessScore[]
+  weeklyReviews          WeeklyReview[]
+  monthlyCheckpoints     MonthlyCheckpoint[]
+  certifications         Certification[]
+  resumeVersions         ResumeVersion[]
+  visaDocuments          VisaDocument[]
+  portfolioProjects      PortfolioProject[]
+
+  @@map("users")
+}
+
+// ============================================================================
+// GROUP 2 — REFERENCE DATA (seeded, rarely changed)
+// ============================================================================
+
+/// 11 rows seeded in M04 (TAD 4.2). SERIAL — reference data, not user-created.
+model StudyDomain {
+  id               Int      @id @default(autoincrement())
+  slug             String   @unique
+  name             String
+  description      String?
+  priority         Int
+  primaryMonth     Int      @map("primary_month")
+  colorHex         String   @map("color_hex")
+  icon             String?
+  /// PRD v2 §7.2 addition — links domain to its Academy module.
+  academyModuleId  Int?     @map("academy_module_id")
+  academyModule    AcademyModule? @relation(fields: [academyModuleId], references: [id])
+
+  skillTopics      SkillTopic[]
+  studySessions    StudySession[]
+  planMonths       PlanMonth[]
+
+  @@map("study_domains")
+}
+
+/// ~88 rows seeded in M04.
+model SkillTopic {
+  id          Int             @id @default(autoincrement())
+  domainId    Int             @map("domain_id")
+  domain      StudyDomain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isSkip      Boolean         @default(false) @map("is_skip")
+  importance  TopicImportance?
+  sortOrder   Int             @default(0) @map("sort_order")
+
+  topicCompletions TopicCompletion[]
+  studySessions    StudySession[]
+
+  @@map("skill_topics")
+}
+
+/// 9 rows seeded in M04.
+model AcademyModule {
+  id              Int      @id @default(autoincrement())
+  slug            String   @unique
+  title           String
+  description     String
+  icon            String
+  colorHex        String   @map("color_hex")
+  sortOrder       Int      @default(0) @map("sort_order")
+  totalLessons    Int      @default(0) @map("total_lessons")
+  estimatedHours  Decimal? @map("estimated_hours") @db.Decimal(4, 1)
+
+  studyDomains StudyDomain[]
+  lessons      AcademyLesson[]
+
+  @@map("academy_modules")
+}
+
+/// 126+ rows seeded in M04 (content placeholders), real content added M23.
+model AcademyLesson {
+  id               Int               @id @default(autoincrement())
+  moduleId         Int               @map("module_id")
+  module           AcademyModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lessonCode       String            @unique @map("lesson_code")
+  title            String
+  contentType      LessonContentType @map("content_type")
+  contentMd        String            @map("content_md") @db.Text
+  durationMinutes  Int               @map("duration_minutes")
+  tier             ContentTier
+  sortOrder        Int               @default(0) @map("sort_order")
+  prerequisites    String[]
+  tags             String[]
+
+  userProgress         UserLessonProgress[]
+  quizQuestions        QuizQuestion[]
+  quizAttempts         QuizAttempt[]
+  /// PRD v2 §7.2 addition — interview_questions.source_lesson_id back-relation.
+  sourcedQuestions     InterviewQuestion[]
+
+  @@map("academy_lessons")
+}
+
+/// 12 rows seeded in M04.
+model PlanMonth {
+  id                     Int       @id @default(autoincrement())
+  monthNumber            Int       @unique @map("month_number")
+  theme                  String
+  phaseName              String    @map("phase_name")
+  primaryDomainId        Int?      @map("primary_domain_id")
+  primaryDomain          StudyDomain? @relation(fields: [primaryDomainId], references: [id])
+  hoursPerWeek           Decimal   @map("hours_per_week") @db.Decimal(4, 1)
+  germanTarget           String    @map("german_target")
+  milestoneDescription   String    @map("milestone_description")
+  startDate              DateTime? @map("start_date") @db.Date
+  endDate                DateTime? @map("end_date") @db.Date
+
+  weeks PlanWeek[]
+
+  @@map("plan_months")
+}
+
+/// 48 rows seeded in M04.
+model PlanWeek {
+  id            Int       @id @default(autoincrement())
+  monthId       Int       @map("month_id")
+  month         PlanMonth @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  weekNumber    Int       @map("week_number")
+  tasksSummary  String    @map("tasks_summary") @db.Text
+  deliverable   String    @db.Text
+  domainIds     Int[]     @map("domain_ids")
+  germanFocus   String    @map("german_focus")
+
+  taskCompletions WeekTaskCompletion[]
+
+  @@unique([monthId, weekNumber])
+  @@map("plan_weeks")
+}
+
+/// 22 rows seeded in M04 (10 A1 + 12 A2).
+model GermanUnit {
+  id            Int          @id @default(autoincrement())
+  level         GermanLevel
+  unitNumber    Int          @map("unit_number")
+  title         String
+  targetMonth   Int          @map("target_month")
+  status        LessonStatus @default(not_started)
+  completedDate DateTime?    @map("completed_date") @db.Date
+
+  germanSessions GermanSession[]
+
+  @@unique([level, unitNumber])
+  @@map("german_units")
+}
+
+/// 12 rows seeded in M04 — EU Blue Card checklist, scoped per-user.
+model VisaDocument {
+  id                     Int                  @id @default(autoincrement())
+  userId                 String               @map("user_id") @db.Uuid
+  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentName           String               @map("document_name")
+  description            String?
+  category               VisaDocumentCategory
+  isRequiredForBlueCard  Boolean              @default(true) @map("is_required_for_blue_card")
+  status                 VisaDocumentStatus   @default(not_started)
+  notes                  String?
+  dueDate                DateTime?            @map("due_date") @db.Date
+  completedDate          DateTime?            @map("completed_date") @db.Date
+  sortOrder              Int                  @default(0) @map("sort_order")
+
+  @@map("visa_documents")
+}
+
+/// 2 rows seeded in M04 — GCOS itself + AI Full-Stack SaaS (PRD v2 §05).
+/// NOTE (M03 staff-eng correction): PRD v2 §7.2 lists a `project_count`
+/// column on this table, which would be a redundant value duplicated on
+/// every row rather than a real per-row attribute. The actual intent —
+/// "this table holds a maximum of 2 projects" — is enforced as a seed-time
+/// invariant in M04, not as a schema column. Flagging here rather than
+/// adding a meaningless field.
+model PortfolioProject {
+  id            Int           @id @default(autoincrement())
+  userId        String        @map("user_id") @db.Uuid
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug          String        @unique
+  name          String
+  description   String        @db.Text
+  techStack     String[]      @map("tech_stack")
+  githubUrl     String?       @map("github_url")
+  liveUrl       String?       @map("live_url")
+  plannedStart  DateTime?     @map("planned_start") @db.Date
+  plannedEnd    DateTime?     @map("planned_end") @db.Date
+  actualStart   DateTime?     @map("actual_start") @db.Date
+  actualEnd     DateTime?     @map("actual_end") @db.Date
+  overallStatus ProjectStatus @default(not_started) @map("overall_status")
+  lighthouseLcp Decimal?      @map("lighthouse_lcp") @db.Decimal(5, 2)
+  lighthouseFcp Decimal?      @map("lighthouse_fcp") @db.Decimal(5, 2)
+  lighthouseCls Decimal?      @map("lighthouse_cls") @db.Decimal(5, 3)
+  testCoveragePct Int?        @map("test_coverage_pct")
+  sortOrder     Int           @default(0) @map("sort_order")
+  /// PRD v2 §7.2 addition.
+  aiToolsUsed   String[]      @default([]) @map("ai_tools_used")
+
+  milestones ProjectMilestone[]
+
+  @@map("portfolio_projects")
+}
+
+/// ~20 rows seeded in M04.
+model ProjectMilestone {
+  id              Int               @id @default(autoincrement())
+  projectId       Int               @map("project_id")
+  project         PortfolioProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  category        MilestoneCategory
+  status          MilestoneStatus   @default(not_started)
+  plannedDate     DateTime?         @map("planned_date") @db.Date
+  completedDate   DateTime?         @map("completed_date") @db.Date
+  deliverableUrl  String?           @map("deliverable_url")
+  sortOrder       Int               @default(0) @map("sort_order")
+
+  @@map("project_milestones")
+}
+
+// ============================================================================
+// GROUP 3 — USER ACTIVITY (written frequently)
+// ============================================================================
+
+/// UUID — user-created entity, written frequently (TAD 4.1).
+model StudySession {
+  id               String      @id @default(uuid()) @db.Uuid
+  userId           String      @map("user_id") @db.Uuid
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId         Int         @map("domain_id")
+  domain           StudyDomain @relation(fields: [domainId], references: [id])
+  topicId          Int?        @map("topic_id")
+  topic            SkillTopic? @relation(fields: [topicId], references: [id])
+  date             DateTime    @default(now()) @db.Date
+  durationMinutes  Int         @map("duration_minutes")
+  resourceType     String?     @map("resource_type")
+  resourceName     String?     @map("resource_name")
+  resourceUrl      String?     @map("resource_url")
+  topicsCovered    String?     @map("topics_covered") @db.Text
+  notes            String?     @db.Text
+  energyLevel      Int?        @map("energy_level")
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, date(sort: Desc)], map: "idx_study_user_date")
+  @@index([userId, domainId], map: "idx_study_domain")
+  @@map("study_sessions")
+}
+
+model UserLessonProgress {
+  id             Int           @id @default(autoincrement())
+  userId         String        @map("user_id") @db.Uuid
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId       Int           @map("lesson_id")
+  lesson         AcademyLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status         LessonStatus  @default(not_started)
+  startedAt      DateTime?     @map("started_at") @db.Timestamptz
+  completedAt    DateTime?     @map("completed_at") @db.Timestamptz
+  timeSpentMin   Int           @default(0) @map("time_spent_min")
+  personalNotes  String?       @map("personal_notes") @db.Text
+
+  @@unique([userId, lessonId])
+  @@index([userId, lessonId], map: "idx_lesson_progress")
+  @@map("user_lesson_progress")
+}
+
+model TopicCompletion {
+  id             Int        @id @default(autoincrement())
+  userId         String     @map("user_id") @db.Uuid
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId        Int        @map("topic_id")
+  topic          SkillTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  completionPct  Int        @default(0) @map("completion_pct")
+  status         LessonStatus @default(not_started)
+  startedAt      DateTime?  @map("started_at") @db.Timestamptz
+  completedAt    DateTime?  @map("completed_at") @db.Timestamptz
+
+  @@unique([userId, topicId])
+  @@map("topic_completions")
+}
+
+model WeekTaskCompletion {
+  id                Int            @id @default(autoincrement())
+  userId            String         @map("user_id") @db.Uuid
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekId            Int            @map("week_id")
+  week              PlanWeek       @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  status            WeekTaskStatus @default(not_started)
+  completionNotes   String?        @map("completion_notes") @db.Text
+  deliverableUrl    String?        @map("deliverable_url")
+  completedAt       DateTime?      @map("completed_at") @db.Timestamptz
+
+  @@unique([userId, weekId])
+  @@map("week_task_completions")
+}
+
+/// ~310 rows seeded in M04 (real text seeded M04, real answer options M23).
+/// Distinct from QuizAttempt: this is the question bank itself (one row per
+/// question), QuizAttempt is a user's submission against these questions.
+model QuizQuestion {
+  id             Int           @id @default(autoincrement())
+  lessonId       Int           @map("lesson_id")
+  lesson         AcademyLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  question       String        @db.Text
+  optionA        String        @map("option_a")
+  optionB        String        @map("option_b")
+  optionC        String        @map("option_c")
+  optionD        String        @map("option_d")
+  correctOption  QuizOption    @map("correct_option")
+  explanation    String        @db.Text
+  sortOrder      Int           @default(0) @map("sort_order")
+
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id              String        @id @default(uuid()) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId        Int           @map("lesson_id")
+  lesson          AcademyLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  scorePct        Int           @map("score_pct")
+  answers         Json
+  correctCount    Int           @map("correct_count")
+  totalQuestions  Int           @map("total_questions")
+  completedAt     DateTime      @default(now()) @map("completed_at") @db.Timestamptz
+
+  @@map("quiz_attempts")
+}
+
+model GermanSession {
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionDate       DateTime          @default(now()) @map("session_date") @db.Date
+  sessionType       GermanSessionType @map("session_type")
+  durationMinutes   Int               @map("duration_minutes")
+  dwUnitId          Int?              @map("dw_unit_id")
+  dwUnit            GermanUnit?       @relation(fields: [dwUnitId], references: [id])
+  resourceName      String?           @map("resource_name")
+  vocabularyCount   Int?              @map("vocabulary_count")
+  notes             String?           @db.Text
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  vocabularyEntries VocabularyEntry[]
+
+  @@index([userId, sessionDate(sort: Desc)], map: "idx_german_date")
+  @@map("german_sessions")
+}
+
+model AiToolSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionDate      DateTime  @default(now()) @map("session_date") @db.Date
+  tool             AiTool
+  taskDescription  String    @map("task_description") @db.Text
+  durationMinutes  Int?      @map("duration_minutes")
+  outcome          String?   @db.Text
+  promptSaved      String?   @map("prompt_saved") @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("ai_tool_sessions")
+}
+
+/// German Tracker group (3rd table) — vocabulary log, ~500+ rows over 12mo.
+model VocabularyEntry {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  germanWord      String    @map("german_word")
+  englishMeaning  String    @map("english_meaning")
+  exampleSentence String?   @map("example_sentence") @db.Text
+  germanSessionId String?   @map("german_session_id") @db.Uuid
+  germanSession   GermanSession? @relation(fields: [germanSessionId], references: [id])
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("vocabulary_entries")
+}
+
+// ============================================================================
+// GROUP 4 — JOB PIPELINE
+// ============================================================================
+
+/// Standalone — not user-scoped (companies are shared reference-ish data,
+/// but user-created over time, hence UUID per TAD 4.1).
+model Company {
+  id                String              @id @default(uuid()) @db.Uuid
+  name              String
+  city              String
+  country           String              @default("Germany")
+  sizeBucket        CompanySizeBucket?  @map("size_bucket")
+  sector            String?
+  websiteUrl        String?             @map("website_url")
+  linkedinUrl       String?             @map("linkedin_url")
+  careersUrl        String?             @map("careers_url")
+  hasSponsoredVisa  Boolean             @default(false) @map("has_sponsored_visa")
+  visaEvidence      String?             @map("visa_evidence") @db.Text
+  employeeCount     Int?                @map("employee_count")
+  notes             String?             @db.Text
+  watchlist         Boolean             @default(false)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  jobApplications    JobApplication[]
+  networkConnections NetworkConnection[]
+
+  @@map("companies")
+}
+
+model JobApplication {
+  id                          String               @id @default(uuid()) @db.Uuid
+  userId                      String               @map("user_id") @db.Uuid
+  user                        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId                   String               @map("company_id") @db.Uuid
+  company                     Company              @relation(fields: [companyId], references: [id])
+  roleTitle                   String               @map("role_title")
+  jobUrl                      String?              @map("job_url")
+  source                      ApplicationSource?
+  appliedDate                 DateTime             @default(now()) @map("applied_date") @db.Date
+  stage                       PipelineStage        @default(saved)
+  followUpDate                DateTime?            @map("follow_up_date") @db.Date
+  salaryOffered                Int?                @map("salary_offered")
+  salaryNegotiated            Int?                 @map("salary_negotiated")
+  visaSponsorshipConfirmed    Boolean              @default(false) @map("visa_sponsorship_confirmed")
+  rejectionReason             RejectionReasonCode? @map("rejection_reason")
+  rejectionNotes              String?              @map("rejection_notes") @db.Text
+  coverLetterVersion          String?              @map("cover_letter_version")
+  notes                       String?              @db.Text
+  updatedAt                   DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt                   DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  interviewLogs InterviewLog[]
+  takeHomeAssignments TakeHomeAssignment[]
+
+  @@index([userId, stage], map: "idx_apps_stage")
+  @@index([userId, followUpDate], map: "idx_apps_followup")
+  @@map("job_applications")
+}
+
+model InterviewLog {
+  id                String           @id @default(uuid()) @db.Uuid
+  applicationId     String           @map("application_id") @db.Uuid
+  application       JobApplication   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewDate     DateTime         @map("interview_date") @db.Date
+  roundNumber       Int              @default(1) @map("round_number")
+  format            InterviewFormat?
+  interviewerName   String?          @map("interviewer_name")
+  interviewerRole   String?          @map("interviewer_role")
+  durationMinutes   Int?             @map("duration_minutes")
+  questionsAsked    String[]         @map("questions_asked")
+  myAnswersNotes    String?          @map("my_answers_notes") @db.Text
+  outcome           InterviewOutcome?
+  feedbackReceived  String?          @map("feedback_received") @db.Text
+  myRating          Int?             @map("my_rating")
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("interview_logs")
+}
+
+/// Job Pipeline group (4th table) — distinct from InterviewLog: take-homes
+/// are graded async with no interviewer/format, just a spec + outcome.
+model TakeHomeAssignment {
+  id              String         @id @default(uuid()) @db.Uuid
+  applicationId   String         @map("application_id") @db.Uuid
+  application     JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  receivedDate    DateTime       @map("received_date") @db.Date
+  dueDate         DateTime?      @map("due_date") @db.Date
+  specSummary     String         @map("spec_summary") @db.Text
+  submittedUrl    String?        @map("submitted_url")
+  outcome         InterviewOutcome?
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("take_home_assignments")
+}
+
+model InterviewQuestion {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question        String              @db.Text
+  category        QuestionCategory
+  difficulty      QuestionDifficulty?
+  status          QuestionStatus      @default(not_tried)
+  myAnswer        String?             @map("my_answer") @db.Text
+  source          String?
+  /// PRD v2 §7.2 addition — auto-populated when added from an Academy
+  /// interview_qa lesson via "Add to Question Bank".
+  sourceLessonId  Int?                @map("source_lesson_id")
+  sourceLesson    AcademyLesson?      @relation(fields: [sourceLessonId], references: [id])
+  lastPracticed   DateTime?           @map("last_practiced") @db.Date
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("interview_questions")
+}
+
+/// Interview Prep group (2nd table) — distinct from InterviewLog: a mock
+/// interview has no real job_applications row to attach to (PRD v2 §S29).
+model MockInterviewLog {
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mockDate         DateTime         @map("mock_date") @db.Date
+  format           InterviewFormat?
+  partnerName      String?          @map("partner_name")
+  questionsAsked   String[]         @map("questions_asked")
+  feedback         String?          @db.Text
+  selfRating       Int?             @map("self_rating")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("mock_interview_logs")
+}
+
+// ============================================================================
+// GROUP 5 — NETWORKING
+// ============================================================================
+
+model NetworkConnection {
+  id                  String           @id @default(uuid()) @db.Uuid
+  userId              String           @map("user_id") @db.Uuid
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName            String           @map("full_name")
+  companyId           String?          @map("company_id") @db.Uuid
+  company             Company?         @relation(fields: [companyId], references: [id])
+  roleTitle           String?          @map("role_title")
+  city                String?
+  linkedinUrl         String?          @map("linkedin_url")
+  connectionType      ConnectionType?  @map("connection_type")
+  status              ConnectionStatus @default(sent)
+  connectedDate       DateTime?        @map("connected_date") @db.Date
+  lastInteraction     DateTime?        @map("last_interaction") @db.Date
+  notes               String?          @db.Text
+  isAtTargetCompany   Boolean          @default(false) @map("is_at_target_company")
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  coffeeChats CoffeeChat[]
+
+  @@index([userId, connectionType], map: "idx_connections_type")
+  @@map("network_connections")
+}
+
+/// Networking group (2nd table) — ~20 rows over 12mo.
+model CoffeeChat {
+  id            String   @id @default(uuid()) @db.Uuid
+  connectionId  String   @map("connection_id") @db.Uuid
+  connection    NetworkConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  chatDate      DateTime @map("chat_date") @db.Date
+  keyInsights   String?  @map("key_insights") @db.Text
+  followUpNotes String?  @map("follow_up_notes") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("coffee_chats")
+}
+
+/// Networking group (3rd table) — ~15 rows over 12mo, content calendar log.
+model LinkedinPost {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publishedDate DateTime @map("published_date") @db.Date
+  topic         String
+  postUrl       String?  @map("post_url")
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("linkedin_posts")
+}
+
+// ============================================================================
+// GROUP 6 — ANALYTICS
+// ============================================================================
+
+model ReadinessScore {
+  id                 Int      @id @default(autoincrement())
+  userId             String   @map("user_id") @db.Uuid
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordedDate       DateTime @default(now()) @map("recorded_date") @db.Date
+  overallScore       Int      @map("overall_score")
+  studyScore         Int      @map("study_score")
+  applicationScore   Int      @map("application_score")
+  portfolioScore     Int      @map("portfolio_score")
+  germanScore        Int      @map("german_score")
+  domainScore        Int      @map("domain_score")
+  interviewScore     Int      @map("interview_score")
+  /// PRD v2 §7.2 additions — 7-dimension score (TAD §9 / PRD v2 §1.4).
+  academyScore       Int?     @map("academy_score")
+  aiToolingScore     Int?     @map("ai_tooling_score")
+
+  @@unique([userId, recordedDate])
+  @@index([userId, recordedDate(sort: Desc)], map: "idx_score_date")
+  @@map("readiness_scores")
+}
+
+model WeeklyReview {
+  id                          String    @id @default(uuid()) @db.Uuid
+  userId                      String    @map("user_id") @db.Uuid
+  user                        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartDate               DateTime  @unique @map("week_start_date") @db.Date
+  q1Technical                 String?   @map("q1_technical")
+  q2Code                      String?   @map("q2_code")
+  q3VisibleWork                String?  @map("q3_visible_work")
+  q4Applications              String?   @map("q4_applications")
+  q5German                    String?   @map("q5_german")
+  studyHoursActual            Decimal?  @map("study_hours_actual") @db.Decimal(5, 1)
+  applicationsSentActual      Int?      @map("applications_sent_actual")
+  germanMinutesActual         Int?      @map("german_minutes_actual")
+  readinessScoreSnapshot      Int?      @map("readiness_score_snapshot")
+  wentWell                    String?   @map("went_well") @db.Text
+  didntGoWell                 String?   @map("didnt_go_well") @db.Text
+  nextWeekFocus               String?   @map("next_week_focus") @db.Text
+  overallRating               Int?      @map("overall_rating")
+  createdAt                   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("weekly_reviews")
+}
+
+model MonthlyCheckpoint {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthNumber     Int      @map("month_number")
+  goNoGoVerdict   String?  @map("go_no_go_verdict")
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("monthly_checkpoints")
+}
+
+// ============================================================================
+// GROUP 7 — CAREER MATERIALS
+// ============================================================================
+
+model Certification {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  provider        String
+  status          String    @default("in_progress")
+  dateEarned      DateTime? @map("date_earned") @db.Date
+  expiryDate      DateTime? @map("expiry_date") @db.Date
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("certifications")
+}
+
+model ResumeVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versionLabel    String   @map("version_label")
+  whatChanged     String?  @map("what_changed") @db.Text
+  fileUrl         String?  @map("file_url")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("resume_versions")
+}

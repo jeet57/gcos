@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# M01: blocks commits that fail type-check or lint.
+# Runs against the whole workspace via Turborepo's cache — fast after first run.
+
+pnpm type-check && pnpm lint
