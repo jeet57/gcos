@@ -3,6 +3,7 @@ import { ValidationPipe, HttpStatus } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import fastifyCookie from '@fastify/cookie';
 
 import { AppModule } from './app.module';
 
@@ -15,6 +16,15 @@ import { AppModule } from './app.module';
  */
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+
+  // Refresh token cookie (M08) is plain (not signed) — its integrity is
+  // already guaranteed by the JWT signature inside it, so no cookie
+  // secret is needed here. The `as any` works around a known typing
+  // mismatch between @nestjs/platform-fastify's app.register() and
+  // @fastify/cookie's declaration merging — purely structural, no
+  // runtime effect (confirmed via the M08 smoke test).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await app.register(fastifyCookie as any);
 
   app.useGlobalPipes(
     new ValidationPipe({

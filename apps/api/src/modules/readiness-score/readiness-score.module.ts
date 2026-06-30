@@ -5,8 +5,9 @@ import { ReadinessScoreController } from './readiness-score.controller';
 import { ReadinessScoreService } from './readiness-score.service';
 
 /**
- * M07 scope: module stub only — registered in AppModule, no business
- * logic yet. Score calculation service — core logic (implemented in M12)
+ * M09 scope: real 7-dimension calculation implemented. Standalone
+ * module per TAD 3.4 — owns no database tables, exported so
+ * DashboardModule (M10) can inject ReadinessScoreService directly.
  */
 @Module({
   imports: [PrismaModule],

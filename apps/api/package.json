@@ -9,7 +9,8 @@
     "start:prod": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
-    "test": "echo \"no tests yet \u2014 added in M09\" && exit 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf dist",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -18,6 +19,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@fastify/cookie": "^9.4.0",
     "@fastify/static": "^7.0.4",
     "@nestjs/common": "^10.4.6",
     "@nestjs/config": "^3.3.0",
@@ -26,9 +28,10 @@
     "@nestjs/platform-fastify": "^10.4.6",
     "@nestjs/swagger": "^7.4.2",
     "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
-    "fastify": "^4.28.1",
+    "fastify": "^4.29.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -37,12 +40,14 @@
     "@gcos/types": "workspace:*",
     "@nestjs/cli": "^10.4.7",
     "@nestjs/schematics": "^10.2.3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",
     "@types/node": "^22.9.0",
     "eslint": "^9.15.0",
     "prisma": "^5.22.0",
     "typescript": "^5.6.3",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "vitest": "^2.1.5"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

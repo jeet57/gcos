@@ -5,8 +5,10 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
 /**
- * M07 scope: module stub only — registered in AppModule, no business
- * logic yet. JWT auth: login, register, refresh (implemented in M08)
+ * M08 scope: JWT auth fully implemented — register, login, refresh
+ * (with rotation), logout, me. JwtService is available here via the
+ * globally-registered JwtModule (app.module.ts, M07); no local
+ * JwtModule.register() needed.
  */
 @Module({
   imports: [PrismaModule],

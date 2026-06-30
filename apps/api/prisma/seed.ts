@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import { studyDomains } from './data/study-domains';
 import { academyModules } from './data/academy-modules';
 import { academyLessonSeeds } from './data/academy-lessons';
@@ -15,14 +16,19 @@ async function main(): Promise<void> {
   console.log('🌱 GCOS seed starting...\n');
 
   // 1. Bootstrap User — required because VisaDocument and
-  // PortfolioProject both have a required, non-nullable userId FK,
-  // and auth (M08) doesn't exist yet to create a real one.
+  // PortfolioProject both have a required, non-nullable userId FK.
+  // Password comes from DEV_SEED_PASSWORD (.env.local) — see M08
+  // integration notes; falls back to a dev-only default so the seed
+  // never silently fails, but you should still set it locally.
+  const seedPassword = process.env.DEV_SEED_PASSWORD ?? 'change-me-dev-only';
+  const passwordHash = await bcrypt.hash(seedPassword, 12);
+
   const user = await prisma.user.upsert({
     where: { email: 'jitendra@gcos.app' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'jitendra@gcos.app',
-      passwordHash: '$2b$12$placeholder.hash.replace.in.M08.0000000000000000000000',
+      passwordHash,
       name: 'Jitendra Mishra',
       targetCountry: 'Germany',
       targetRole: 'Senior Full-Stack Engineer',

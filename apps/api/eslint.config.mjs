@@ -1,10 +1,17 @@
 import { baseConfig } from '@gcos/config/eslint';
 
 // Node globals needed for main.ts / guards / interceptors (process.env, console.log).
-const nodeGlobals = ['process', 'console', 'Buffer', '__dirname', '__filename'].reduce(
-  (acc, name) => ({ ...acc, [name]: 'readonly' }),
-  {},
-);
+const nodeGlobals = [
+  'process',
+  'console',
+  'Buffer',
+  '__dirname',
+  '__filename',
+  'setTimeout',
+  'clearTimeout',
+  'setInterval',
+  'clearInterval',
+].reduce((acc, name) => ({ ...acc, [name]: 'readonly' }), {});
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [

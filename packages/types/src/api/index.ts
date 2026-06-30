@@ -11,3 +11,4 @@ export * from './common.types';
 export * from './dashboard.types';
 export * from './academy.types';
 export * from './jobs.types';
+export * from './auth.types';
