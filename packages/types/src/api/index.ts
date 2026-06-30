@@ -1,11 +1,13 @@
 /**
  * API response type barrel.
  *
- * NOTE (M01 scope): only `common.types.ts` exists at this milestone.
- * dashboard.types.ts, academy.types.ts, jobs.types.ts and the rest are
- * added in M05 (Shared Packages) and populated further as each backend
- * module is implemented (M09–M15). This file is kept as the single
- * import surface so downstream milestones only ever add exports here,
+ * M05 adds dashboard.types.ts, academy.types.ts, and jobs.types.ts.
+ * Shapes here are populated further as each backend module is
+ * implemented (M09–M15). This file is kept as the single import
+ * surface so downstream milestones only ever add exports here,
  * never change how consumers import from '@gcos/types'.
  */
 export * from './common.types';
+export * from './dashboard.types';
+export * from './academy.types';
+export * from './jobs.types';

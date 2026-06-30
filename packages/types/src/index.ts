@@ -5,8 +5,9 @@
  *   import { PipelineStage, ApiResponse } from '@gcos/types';
  *
  * M01 scope: enums + the generic ApiResponse envelope only.
- * Prisma-derived model types are added in M03 (prisma.ts).
- * Full DTO shapes are added per-module from M09 onward.
+ * M05 scope: DashboardResponse/ScoreBreakdown/TodayCard, AcademyModule/
+ * AcademyLesson/QuizAttempt, and JobApplication/Company DTO shapes added.
+ * Full route-by-route DTOs are filled in per-module from M09 onward.
  */
 export * from './enums';
 export * from './api';

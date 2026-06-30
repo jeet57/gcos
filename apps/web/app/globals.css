@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * CSS variable tokens — TAD §14.5 (Dark Mode).
+ *
+ * Light mode values are the real MVP palette. The `.dark` block is
+ * architected now (class strategy on <html>) but not wired up to any
+ * toggle yet — that's a Week 6 / post-MVP feature per the plan. Having
+ * both blocks here means dark mode later is a class swap, not a
+ * component refactor.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 215 60% 12%; /* derived from navy */
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 60% 12%;
+
+    --primary: 192 87% 28%; /* teal */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 187 60% 94%; /* teal-light */
+    --secondary-foreground: 192 87% 22%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 20% 96%;
+    --accent-foreground: 215 60% 12%;
+
+    --destructive: 0 72% 38%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 89%;
+    --input: 214 20% 89%;
+    --ring: 192 87% 28%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 215 60% 8%;
+    --foreground: 210 20% 96%;
+
+    --card: 215 50% 11%;
+    --card-foreground: 210 20% 96%;
+
+    --primary: 192 70% 45%;
+    --primary-foreground: 215 60% 8%;
+
+    --secondary: 215 40% 18%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 215 40% 16%;
+    --muted-foreground: 215 16% 65%;
+
+    --accent: 215 40% 18%;
+    --accent-foreground: 210 20% 96%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 210 20% 96%;
+
+    --border: 215 30% 22%;
+    --input: 215 30% 22%;
+    --ring: 192 70% 45%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
