@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module';
+import { ReadinessScoreModule } from '../readiness-score/readiness-score.module';
 import { StudyController } from './study.controller';
 import { StudyService } from './study.service';
 
 /**
- * M07 scope: module stub only — registered in AppModule, no business
- * logic yet. Sessions, domains, plan weeks (implemented in M14)
+ * M11: implemented module — session logging, domain progress, plan
+ * view. Imports ReadinessScoreModule so session/week mutations can
+ * trigger a score recalculation (TAD §3.4).
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ReadinessScoreModule],
   controllers: [StudyController],
   providers: [StudyService],
   exports: [StudyService],

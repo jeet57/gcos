@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module';
+import { ReadinessScoreModule } from '../readiness-score/readiness-score.module';
 import { AcademyController } from './academy.controller';
 import { AcademyService } from './academy.service';
 
 /**
- * M07 scope: module stub only — registered in AppModule, no business
- * logic yet. Lessons, quiz, progress (implemented in M11)
+ * M12: implemented module — lessons, quiz engine, progress tracking.
+ * Imports ReadinessScoreModule so lesson completion and quiz
+ * submission can trigger score recalculation (TAD §3.4).
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ReadinessScoreModule],
   controllers: [AcademyController],
   providers: [AcademyService],
   exports: [AcademyService],

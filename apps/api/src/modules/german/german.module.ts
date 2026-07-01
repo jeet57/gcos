@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module';
+import { ReadinessScoreModule } from '../readiness-score/readiness-score.module';
 import { GermanController } from './german.controller';
 import { GermanService } from './german.service';
 
 /**
- * M07 scope: module stub only — registered in AppModule, no business
- * logic yet. Sessions, units, streak (implemented in M14)
+ * M15: implemented module — sessions, DW units, vocabulary, stats.
+ * Imports ReadinessScoreModule so session creation triggers a score
+ * recalculation (TAD §3.4 german dimension).
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ReadinessScoreModule],
   controllers: [GermanController],
   providers: [GermanService],
   exports: [GermanService],

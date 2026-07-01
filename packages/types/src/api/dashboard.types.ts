@@ -1,6 +1,6 @@
 /**
  * Dashboard composite response shapes.
- * Added in M05 (Shared Packages) — populated by DashboardService in M13.
+ * Added in M05 (Shared Packages) — populated by DashboardService in M10.
  *
  * Mirrors:
  *  - readiness_scores table (Prisma model `ReadinessScore`)
@@ -63,8 +63,24 @@ export interface StreakSummary {
 }
 
 /**
- * Composite payload for GET /api/v1/dashboard (built in M13).
- * Assembled server-side from 7 dimension queries run in parallel
+ * Added in M10. Currently computed inline by DashboardService (overdue
+ * follow-up check only); M16 introduces a dedicated AlertsService +
+ * @Cron job, at which point DashboardService will read from that
+ * service instead of computing this itself — the shape here is the
+ * contract both will produce.
+ */
+export interface FollowUpOverdueAlert {
+  type: 'follow_up_overdue';
+  applicationId: string;
+  company: string;
+  daysOverdue: number;
+}
+
+export type Alert = FollowUpOverdueAlert;
+
+/**
+ * Composite payload for GET /api/v1/dashboard (built in M10).
+ * Assembled server-side from several sections run in parallel
  * (TAD §6, "Promise.all" performance note) and cached for 30s.
  */
 export interface DashboardResponse {
@@ -72,4 +88,5 @@ export interface DashboardResponse {
   todayCard: TodayCard;
   weeklyProgress: WeeklyProgress;
   streaks: StreakSummary;
+  alerts: Alert[];
 }

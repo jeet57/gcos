@@ -5,8 +5,11 @@ import { InterviewsController } from './interviews.controller';
 import { InterviewsService } from './interviews.service';
 
 /**
- * M07 scope: module stub only — registered in AppModule, no business
- * logic yet. Question bank (implemented in M15)
+ * M15: implemented module — question bank, interview logs, mock
+ * interviews. Does not import ReadinessScoreModule because the
+ * interviewScore dimension reads question confident% directly at
+ * snapshot time — updating question status is enough to affect
+ * the next score calculation without an explicit recalc trigger here.
  */
 @Module({
   imports: [PrismaModule],

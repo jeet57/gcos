@@ -5,8 +5,10 @@ import { NetworkingController } from './networking.controller';
 import { NetworkingService } from './networking.service';
 
 /**
- * M07 scope: module stub only — registered in AppModule, no business
- * logic yet. Connections, coffee chats (implemented in M15)
+ * M15: implemented module — connections, coffee chats, LinkedIn posts,
+ * stats. No ReadinessScoreModule import — networking data is not one
+ * of the 7 scored dimensions (PRD v2 §1.4); it surfaces only in the
+ * dashboard weekly-progress view.
  */
 @Module({
   imports: [PrismaModule],

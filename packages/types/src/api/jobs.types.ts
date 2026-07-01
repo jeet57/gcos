@@ -6,7 +6,7 @@
  * Flattened to camelCase plain objects (no Prisma Decimal/Date instances)
  * since these cross the network boundary as JSON.
  */
-import type { PipelineStage, RejectionReason } from '../enums';
+import type { PipelineStage, RejectionReason } from '../enums/index.js';
 
 export interface CompanyDto {
   id: string;

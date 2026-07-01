@@ -9,6 +9,6 @@
  * AcademyLesson/QuizAttempt, and JobApplication/Company DTO shapes added.
  * Full route-by-route DTOs are filled in per-module from M09 onward.
  */
-export * from './enums';
-export * from './api';
-export * from './prisma';
+export * from './enums/index.js';
+export * from './api/index.js';
+export * from './prisma.js';

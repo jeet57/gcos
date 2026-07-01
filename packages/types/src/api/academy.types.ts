@@ -8,7 +8,7 @@
  * Mirrors academy_modules / academy_lessons / user_lesson_progress /
  * quiz_attempts tables (PRD v2 §7.1) and PRD v2 §1.4 Academy dimension.
  */
-import type { ContentTier, LessonContentType, LessonStatus } from '../enums';
+import type { ContentTier, LessonContentType, LessonStatus } from '../enums/index.js';
 
 export interface AcademyModuleDto {
   id: number;
@@ -55,4 +55,40 @@ export interface QuizAttemptDto {
   correctCount: number;
   totalQuestions: number;
   completedAt: string;
+}
+
+/** Question shown to the user before submission — correctOption is never included. */
+export interface QuizQuestionDto {
+  id: number;
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+}
+
+export interface QuizQuestionResultDto {
+  questionId: number;
+  correct: boolean;
+  correctOption: 'A' | 'B' | 'C' | 'D';
+  explanation: string;
+}
+
+export interface QuizSubmitResultDto {
+  scorePct: number;
+  correctCount: number;
+  totalQuestions: number;
+  results: QuizQuestionResultDto[];
+}
+
+export interface ModuleDetailDto extends AcademyModuleDto {
+  lessons: AcademyLessonDto[];
+}
+
+export interface AcademyProgressDto {
+  lessonsCompleted: number;
+  totalLessons: number;
+  modulesCompleted: number;
+  totalModules: number;
+  quizAverageScorePct: number;
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { LessonStatus, QuestionStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { currentPlanMonthNumber, startOfMonth, startOfNextMonth } from '../../common/utils/plan-date.util';
 import type { ScoreBreakdown } from '@gcos/types';
 
 const WEIGHTS = {
@@ -18,34 +19,10 @@ const GERMAN_ACADEMY_MODULE_SLUG = 'german-a1-a2';
 const GERMAN_BONUS_MAX_POINTS = 10;
 const APPLICATION_MONTHLY_TARGET = 80; // 20/week x 4 (PRD 6.3)
 const AI_TOOLING_MONTHLY_TARGET_FALLBACK = 4;
-const PLAN_MONTH_COUNT = 12;
 
 function clampScore(value: number): number {
   if (Number.isNaN(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
-}
-
-function startOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function startOfNextMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 1);
-}
-
-/**
- * Months elapsed since the user's plan start, 1-indexed and clamped to
- * [1, 12] (TAD 3.4 / PRD 6.3 - the 12-month curriculum). Used only to
- * resolve the correct PlanMonth row for the Study dimension's weekly-
- * hours target; the "this month" window for other dimensions (apps
- * sent, AI sessions) is the real calendar month.
- */
-function currentPlanMonthNumber(planStartDate: Date, now: Date): number {
-  const months =
-    (now.getFullYear() - planStartDate.getFullYear()) * 12 +
-    (now.getMonth() - planStartDate.getMonth()) +
-    1;
-  return Math.max(1, Math.min(PLAN_MONTH_COUNT, months));
 }
 
 /**
@@ -196,8 +173,9 @@ export class ReadinessScoreService {
       return (completed / project.milestones.length) * 100;
     };
 
-    const project1Pct = completionPct(projects[0]);
-    const project2Pct = projects.length > 1 ? completionPct(projects[1]) : 0;
+    const [firstProject, secondProject] = projects;
+    const project1Pct = firstProject ? completionPct(firstProject) : 0;
+    const project2Pct = secondProject ? completionPct(secondProject) : 0;
 
     return clampScore(project1Pct * 0.5 + project2Pct * 0.5);
   }
