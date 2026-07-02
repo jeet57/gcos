@@ -16,6 +16,7 @@ import { AppModule } from './app.module';
  */
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+   app.setGlobalPrefix('api/v1');
 
   // Refresh token cookie (M08) is plain (not signed) — its integrity is
   // already guaranteed by the JWT signature inside it, so no cookie
