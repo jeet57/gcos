@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { AppController } from './app.controller';
@@ -24,6 +25,8 @@ import { InterviewsModule } from './modules/interviews/interviews.module';
 import { ResumeModule } from './modules/resume/resume.module';
 import { VisaModule } from './modules/visa/visa.module';
 import { AiToolsModule } from './modules/ai-tools/ai-tools.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
+import { ScheduledTasksModule } from './modules/scheduled-tasks/scheduled-tasks.module';
 
 /**
  * M07 scope: all 13 feature module stubs registered, plus the global
@@ -34,16 +37,24 @@ import { AiToolsModule } from './modules/ai-tools/ai-tools.module';
  *
  * JwtAuthGuard runs globally, so every route in every module below
  * 401s by default until M08 provides real JWTs — only @Public() routes
- * (currently just GET /health) bypass it.
+ * (currently just GET /health, plus the M16 internal trigger route)
+ * bypass it.
+ *
+ * M16 adds ScheduleModule.forRoot() (registered once, globally, here —
+ * per Nest convention, not owned by ScheduledTasksModule itself) plus
+ * AlertsModule and ScheduledTasksModule.
  */
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({ global: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     DashboardModule,
     ReadinessScoreModule,
+    AlertsModule,
+    ScheduledTasksModule,
     AcademyModule,
     StudyModule,
     JobsModule,

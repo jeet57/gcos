@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { ContentTier, LessonStatus, PipelineStage } from '@prisma/client';
-import type { Alert, DashboardResponse, StreakSummary, TodayCard, WeeklyProgress } from '@gcos/types';
+import type { ContentTier, LessonStatus } from '@prisma/client';
+import type { DashboardResponse, StreakSummary, TodayCard, WeeklyProgress } from '@gcos/types';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReadinessScoreService } from '../readiness-score/readiness-score.service';
+import { AlertsService } from '../alerts/alerts.service';
 import {
   currentPlanMonthNumber,
   currentPlanWeekNumber,
@@ -11,33 +12,24 @@ import {
   startOfNextWeek,
 } from '../../common/utils/plan-date.util';
 
-/** Stages a follow-up overdue check should consider "still active". */
-const ACTIVE_FOLLOWUP_STAGES: PipelineStage[] = [
-  'applied',
-  'screening',
-  'tech_interview',
-  'take_home',
-  'final_interview',
-];
-
 /**
  * Orchestrates the composite GET /api/v1/dashboard response (TAD §6,
  * PRD v2 §8.5 Morning Check-In). Sections are queried in parallel via
  * Promise.all so the slowest section — not the sum of all sections —
  * determines response time, per the M10 <200ms target.
  *
- * Alerts (overdue follow-ups) are computed inline here for now. M16
- * introduces a dedicated AlertsService + @Cron job that runs this same
- * check on a schedule and caches it; when that lands, this method
- * should be replaced with a read from that service rather than
- * recomputing on every request. Flagged here rather than blocking M10
- * on M16.
+ * M16: alerts (overdue follow-ups) now come from AlertsService rather
+ * than being computed inline here — this was flagged as a to-do back
+ * in M10 and is resolved by this milestone. The query itself is
+ * unchanged (same indexed lookup, same shape), just relocated so the
+ * M16 cron job can reuse the identical logic.
  */
 @Injectable()
 export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly readinessScoreService: ReadinessScoreService,
+    private readonly alertsService: AlertsService,
   ) {}
 
   async getDashboard(userId: string): Promise<DashboardResponse> {
@@ -55,7 +47,7 @@ export class DashboardService {
         user.weeklyGermanMinutesTarget,
       ),
       this.getStreaks(userId, now),
-      this.getAlerts(userId, now),
+      this.alertsService.getOverdueAlerts(userId, now),
     ]);
 
     return { score, todayCard, weeklyProgress, streaks, alerts };
@@ -223,33 +215,5 @@ export class DashboardService {
 
   private dateKey(date: Date): string {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-  }
-
-  // ---------------------------------------------------------------------
-  // Alerts
-  // ---------------------------------------------------------------------
-
-  private async getAlerts(userId: string, now: Date): Promise<Alert[]> {
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const overdue = await this.prisma.jobApplication.findMany({
-      where: {
-        userId,
-        stage: { in: ACTIVE_FOLLOWUP_STAGES },
-        followUpDate: { lt: today, not: null },
-      },
-      include: { company: { select: { name: true } } },
-    });
-
-    const msPerDay = 24 * 60 * 60 * 1000;
-
-    return overdue.map((app: { id: string; followUpDate: Date | null; company: { name: string } }) => ({
-      type: 'follow_up_overdue' as const,
-      applicationId: app.id,
-      company: app.company.name,
-      daysOverdue: app.followUpDate
-        ? Math.floor((today.getTime() - new Date(app.followUpDate).getTime()) / msPerDay)
-        : 0,
-    }));
   }
 }
